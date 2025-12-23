@@ -1,7 +1,6 @@
 #!/bin/bash
-# SSH servisini başlat (Azure App Service erişimi için)
+# SSH servisini başlat [cite: 156]
 service ssh start
 
-# .NET uygulamasını başlat
-# NOT: UygulamaAdiniz.dll kısmını kendi projenin adı ile değiştir!
+# Doğru DLL adıyla uygulamayı başlat
 dotnet midterm_group4.dll
