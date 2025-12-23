@@ -6,31 +6,33 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-  steps:
-  - name: 'Checkout master'
-      uses: actions/checkout@v2
-  
-  - name: 'Sign in to Azure'
-    uses: azure/login@v1
-    with:
-    creds: ${{secrets.AZURE_CREDENTIALS}}
-  
-  - name: 'Build & Push to ACR'
-    uses: azure/docker-login@v1
-    with:
-    login-server: se4453midtermacr.azurecr.io
-    username: ${{ secrets.REGISTRY_USERNAME }}
-    password: ${{ secrets.REGISTRY_PASSWORD }}
+    steps:
+      - name: "Checkout branch"
+        uses: actions/checkout@v2
 
-  - run: |
-    docker build . -t se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}
-    docker push se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}
+      - name: "Sign in to Azure"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-  - name: 'Deploy from ACR to App Service'
-    uses: azure/webapps-deploy@v2
-    with:
-    app-name: 'se4453-midterm-webapp'
-    images: 'se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}'
+      - name: "Build & Push to ACR"
+        uses: azure/docker-login@v1
+        with:
+          login-server: se4453midtermacr.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
 
-  - run: |
-az logout
+      - name: "Build and Push Docker Image"
+        run: |
+          docker build . -t se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}
+          docker push se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}
+
+      - name: "Deploy from ACR to App Service"
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: "se4453-midterm-webapp"
+          images: "se4453midtermacr.azurecr.io/se4453-final-image:${{ github.sha }}"
+
+      - name: "Logout from Azure"
+        run: |
+          az logout
