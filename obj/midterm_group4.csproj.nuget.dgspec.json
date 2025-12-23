@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\selcuk\\Pictures\\midterm_group4\\midterm_group4.csproj": {}
+    "C:\\Users\\selcuk\\Pictures\\se4453-final\\midterm_group4.csproj": {}
   },
   "projects": {
-    "C:\\Users\\selcuk\\Pictures\\midterm_group4\\midterm_group4.csproj": {
+    "C:\\Users\\selcuk\\Pictures\\se4453-final\\midterm_group4.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\selcuk\\Pictures\\midterm_group4\\midterm_group4.csproj",
+        "projectUniqueName": "C:\\Users\\selcuk\\Pictures\\se4453-final\\midterm_group4.csproj",
         "projectName": "midterm_group4",
-        "projectPath": "C:\\Users\\selcuk\\Pictures\\midterm_group4\\midterm_group4.csproj",
+        "projectPath": "C:\\Users\\selcuk\\Pictures\\se4453-final\\midterm_group4.csproj",
         "packagesPath": "C:\\Users\\selcuk\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\selcuk\\Pictures\\midterm_group4\\obj\\",
+        "outputPath": "C:\\Users\\selcuk\\Pictures\\se4453-final\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -22,15 +22,15 @@
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
-          "net9.0"
+          "net8.0"
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
-          "net9.0": {
-            "targetAlias": "net9.0",
+          "net8.0": {
+            "targetAlias": "net8.0",
             "projectReferences": {}
           }
         },
@@ -47,9 +47,17 @@
         "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
-        "net9.0": {
-          "targetAlias": "net9.0",
+        "net8.0": {
+          "targetAlias": "net8.0",
           "dependencies": {
+            "Azure.Identity": {
+              "target": "Package",
+              "version": "[1.17.0, )"
+            },
+            "Azure.Security.KeyVault.Secrets": {
+              "target": "Package",
+              "version": "[4.8.0, )"
+            },
             "Npgsql": {
               "target": "Package",
               "version": "[9.0.4, )"
