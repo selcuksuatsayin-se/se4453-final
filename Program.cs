@@ -1,45 +1,39 @@
-﻿using Azure.Identity;
-using Azure.Security.KeyVault.Secrets;
-using Npgsql;
+﻿using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-string connectionString;
-
-if (builder.Environment.IsDevelopment())
-{
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-}
-else
-{
-    var keyVaultUrl = builder.Configuration["KeyVaultUrl"];   
-    var secretName = "DbConnection";
-
-    var secretClient = new SecretClient(new Uri(keyVaultUrl!), new DefaultAzureCredential());
-    KeyVaultSecret secret = secretClient.GetSecret(secretName);
-    connectionString = secret.Value;
-}
-
+// HATA ÇÖZÜMÜ: Key Vault mantığını sildik.
+// .NET, Azure 'Connection Strings' altındaki "DefaultConnection"ı otomatik algılar.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 var app = builder.Build();
 
 app.MapGet("/", () => "API is running");
 
+// Debug endpoint: Bağlantı dizesinin gelip gelmediğini kontrol etmek için
 app.MapGet("/debug-conn", () =>
 {
-    var preview = connectionString?.Length > 80
-        ? connectionString.Substring(0, 80) + "..."
-        : connectionString ?? "null";
+    if (string.IsNullOrEmpty(connectionString))
+        return Results.Text("HATA: Connection string NULL veya Boş!");
 
-    return Results.Text(preview);
+    // Güvenlik için sadece ilk 20 karakteri gösterelim
+    var preview = connectionString.Length > 20
+        ? connectionString.Substring(0, 20) + "..."
+        : connectionString;
+
+    return Results.Text($"Bağlantı dizesi başarıyla okundu: {preview}");
 });
 
 app.MapGet("/hello", async () =>
 {
-    await using var conn = new NpgsqlConnection(connectionString);
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        return Results.Problem("Bağlantı dizesi bulunamadı. Azure Configuration kontrol edin.");
+    }
 
     try
     {
+        await using var conn = new NpgsqlConnection(connectionString);
         await conn.OpenAsync();
 
         await using var cmd = new NpgsqlCommand("SELECT NOW()", conn);
@@ -47,15 +41,13 @@ app.MapGet("/hello", async () =>
 
         return Results.Ok(new
         {
-            message = "/hello endpoint working",
-            databaseConnection = "OK",
-            dbTime,
-            usedConnectionString = connectionString
+            message = "Veritabanı bağlantısı BAŞARILI",
+            time = dbTime?.ToString()
         });
     }
     catch (Exception ex)
     {
-        return Results.Problem($"Database connection FAILED: {ex.Message}");
+        return Results.Problem($"Veritabanı hatası: {ex.Message}");
     }
 });
 
