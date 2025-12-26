@@ -12,7 +12,7 @@ public class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // KEYVAULTURL environment variable kontrolü
-        var keyVaultUrl = Environment.GetEnvironmentVariable("KEYVAULTURL");
+        var keyVaultUrl = Environment.GetEnvironmentVariable("KeyVaultUrl");
 
         // Eğer boşsa hata fırlat
         if (string.IsNullOrWhiteSpace(keyVaultUrl))
