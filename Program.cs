@@ -6,15 +6,12 @@ namespace AzureMidtermProject;
 
 public class Program
 {
-    // Main metodunu 'async Task' yaparak modern ve performanslı hale getirdik
     public static async Task Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // KEYVAULTURL environment variable kontrolü
         var keyVaultUrl = Environment.GetEnvironmentVariable("KeyVaultUrl");
 
-        // Eğer boşsa hata fırlat
         if (string.IsNullOrWhiteSpace(keyVaultUrl))
         {
             throw new InvalidOperationException("KEYVAULTURL environment variable is not set.");
@@ -22,11 +19,8 @@ public class Program
 
         Console.WriteLine($"Key Vault URL bulundu: {keyVaultUrl}");
 
-        // Key Vault bağlantısı (Managed Identity ile)
         var secretClient = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
 
-        // Secret'ları ASENKRON olarak çekiyoruz (Uygulama açılışını hızlandırır)
-        // Paralel task başlatıp hepsini aynı anda bekliyoruz
         var hostTask = secretClient.GetSecretAsync("PGHOST");
         var userTask = secretClient.GetSecretAsync("PGUSER");
         var passTask = secretClient.GetSecretAsync("PGPASSWORD");
@@ -50,19 +44,16 @@ public class Program
             Username = dbUser,
             Password = dbPassword,
             Port = int.Parse(dbPort),
-            // ÖNEMLİ: Azure PostgreSQL için SSL zorunludur
             SslMode = SslMode.Require,
-            TrustServerCertificate = true // Self-signed sertifikalar için gerekebilir
+            TrustServerCertificate = true
         };
 
         string connectionString = csb.ConnectionString;
 
-        // Dependency Injection'a ekle
         builder.Services.AddScoped<NpgsqlConnection>(_ => new NpgsqlConnection(connectionString));
 
         var app = builder.Build();
 
-        // Endpointler
         app.MapGet("/", () => "Azure final web app is running correctly.");
 
         app.MapGet("/debug-env", () =>
@@ -71,7 +62,7 @@ public class Program
             {
                 Status = "Secrets Loaded",
                 KeyVaultUrl = keyVaultUrl,
-                DbHost = dbHost, // Debug için hostu görelim (şifreyi göstermiyoruz)
+                DbHost = dbHost,
                 SslMode = csb.SslMode.ToString()
             });
         });
@@ -82,21 +73,15 @@ public class Program
             {
                 await connection.OpenAsync();
 
-                // Tablo oluşturma komutu
-                await using var cmd = new NpgsqlCommand(
-                    "CREATE TABLE IF NOT EXISTS contributors ( student_id VARCHAR(20) PRIMARY KEY, name VARCHAR(100) NOT NULL );",
-                    connection);
+                await using var cmd = new NpgsqlCommand("SELECT NOW()", connection);
+                var dbTime = await cmd.ExecuteScalarAsync();
 
-                await cmd.ExecuteNonQueryAsync();
-
-                // Basit bir insert denemesi de yapabiliriz (Opsiyonel)
-                // await using var insertCmd = new NpgsqlCommand("INSERT INTO contributors VALUES ('123', 'Test User') ON CONFLICT DO NOTHING;", connection);
-                // await insertCmd.ExecuteNonQueryAsync();
 
                 return Results.Ok(new
                 {
                     message = "/hello endpoint worked!",
                     connectedDatabase = connection.Database,
+                    serverTime = dbTime?.ToString(),
                     state = connection.State.ToString()
                 });
             }
