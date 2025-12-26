@@ -79,7 +79,7 @@ public class Program
 
                 return Results.Ok(new
                 {
-                    message = "/hello endpoint worked!",
+                    message = "/hello endpoint is working.",
                     connectedDatabase = connection.Database,
                     serverTime = dbTime?.ToString(),
                     state = connection.State.ToString()
