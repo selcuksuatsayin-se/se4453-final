@@ -52,7 +52,7 @@
           "dependencies": {
             "Azure.Identity": {
               "target": "Package",
-              "version": "[1.17.0, )"
+              "version": "[1.17.1, )"
             },
             "Azure.Security.KeyVault.Secrets": {
               "target": "Package",
@@ -60,7 +60,7 @@
             },
             "Npgsql": {
               "target": "Package",
-              "version": "[9.0.4, )"
+              "version": "[10.0.1, )"
             }
           },
           "imports": [
