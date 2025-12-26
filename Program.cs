@@ -2,63 +2,110 @@
 using Azure.Security.KeyVault.Secrets;
 using Npgsql;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace AzureMidtermProject;
 
-
-// 1. Development ortamında (Yerel) appsettings.json'dan oku
-
-// 2. Production ortamında (Azure) Key Vault'tan oku
-
-
-var host = builder.Configuration["PGHOST"];
-var db = builder.Configuration["PGDATABASE"];
-var user = builder.Configuration["PGUSER"];
-var pass = builder.Configuration["PGPASSWORD"];
-var port = builder.Configuration["PGPORT"] ?? "5432";
-
-var connectionString =
-    $"Host={host};Database={db};Username={user};Password={pass};Port={port};Ssl Mode=Require;";
-
-var app = builder.Build();
-
-app.MapGet("/", () => "API Calisiyor (Key Vault Versiyonu)");
-
-// Debug Endpoint: Bağlantı dizesinin oluşup oluşmadığını kontrol etmek için
-app.MapGet("/debug-conn", () =>
+public class Program
 {
-    if (string.IsNullOrEmpty(connectionString))
-        return Results.Text("HATA: Connection string oluşturulamadı! Key Vault izinlerini kontrol edin.");
-
-    // Güvenlik için şifreyi gizleyerek gösterelim
-    return Results.Text($"Bağlantı dizesi başarıyla oluşturuldu. Host: {connectionString.Split(';')[0]}");
-});
-
-app.MapGet("/hello", async () =>
-{
-    if (string.IsNullOrEmpty(connectionString))
+    // Main metodunu 'async Task' yaparak modern ve performanslı hale getirdik
+    public static async Task Main(string[] args)
     {
-        return Results.Problem("Bağlantı dizesi boş. Key Vault okunamadı.");
-    }
+        var builder = WebApplication.CreateBuilder(args);
 
-    try
-    {
-        await using var conn = new NpgsqlConnection(connectionString);
-        await conn.OpenAsync();
+        // KEYVAULTURL environment variable kontrolü
+        var keyVaultUrl = Environment.GetEnvironmentVariable("KEYVAULTURL");
 
-        await using var cmd = new NpgsqlCommand("SELECT NOW()", conn);
-        var dbTime = await cmd.ExecuteScalarAsync();
-
-        return Results.Ok(new
+        // Eğer boşsa hata fırlat
+        if (string.IsNullOrWhiteSpace(keyVaultUrl))
         {
-            message = "Veritabanı bağlantısı BAŞARILI",
-            source = builder.Environment.IsDevelopment() ? "Local Config" : "Azure Key Vault",
-            time = dbTime?.ToString()
-        });
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"Veritabanı hatası: {ex.Message}");
-    }
-});
+            throw new InvalidOperationException("KEYVAULTURL environment variable is not set.");
+        }
 
-app.Run();
+        Console.WriteLine($"Key Vault URL bulundu: {keyVaultUrl}");
+
+        // Key Vault bağlantısı (Managed Identity ile)
+        var secretClient = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+
+        // Secret'ları ASENKRON olarak çekiyoruz (Uygulama açılışını hızlandırır)
+        // Paralel task başlatıp hepsini aynı anda bekliyoruz
+        var hostTask = secretClient.GetSecretAsync("PGHOST");
+        var userTask = secretClient.GetSecretAsync("PGUSER");
+        var passTask = secretClient.GetSecretAsync("PGPASSWORD");
+        var dbTask = secretClient.GetSecretAsync("PGDATABASE");
+        var portTask = secretClient.GetSecretAsync("PGPORT");
+
+        await Task.WhenAll(hostTask, userTask, passTask, dbTask, portTask);
+
+        string dbHost = hostTask.Result.Value.Value;
+        string dbUser = userTask.Result.Value.Value;
+        string dbPassword = passTask.Result.Value.Value;
+        string dbName = dbTask.Result.Value.Value;
+        string dbPort = portTask.Result.Value.Value;
+
+        Console.WriteLine("Loaded DB secrets from Azure Key Vault.");
+
+        var csb = new NpgsqlConnectionStringBuilder
+        {
+            Host = dbHost,
+            Database = dbName,
+            Username = dbUser,
+            Password = dbPassword,
+            Port = int.Parse(dbPort),
+            // ÖNEMLİ: Azure PostgreSQL için SSL zorunludur
+            SslMode = SslMode.Require,
+            TrustServerCertificate = true // Self-signed sertifikalar için gerekebilir
+        };
+
+        string connectionString = csb.ConnectionString;
+
+        // Dependency Injection'a ekle
+        builder.Services.AddScoped<NpgsqlConnection>(_ => new NpgsqlConnection(connectionString));
+
+        var app = builder.Build();
+
+        // Endpointler
+        app.MapGet("/", () => "Azure final web app is running correctly.");
+
+        app.MapGet("/debug-env", () =>
+        {
+            return Results.Ok(new
+            {
+                Status = "Secrets Loaded",
+                KeyVaultUrl = keyVaultUrl,
+                DbHost = dbHost, // Debug için hostu görelim (şifreyi göstermiyoruz)
+                SslMode = csb.SslMode.ToString()
+            });
+        });
+
+        app.MapGet("/hello", async (NpgsqlConnection connection) =>
+        {
+            try
+            {
+                await connection.OpenAsync();
+
+                // Tablo oluşturma komutu
+                await using var cmd = new NpgsqlCommand(
+                    "CREATE TABLE IF NOT EXISTS contributors ( student_id VARCHAR(20) PRIMARY KEY, name VARCHAR(100) NOT NULL );",
+                    connection);
+
+                await cmd.ExecuteNonQueryAsync();
+
+                // Basit bir insert denemesi de yapabiliriz (Opsiyonel)
+                // await using var insertCmd = new NpgsqlCommand("INSERT INTO contributors VALUES ('123', 'Test User') ON CONFLICT DO NOTHING;", connection);
+                // await insertCmd.ExecuteNonQueryAsync();
+
+                return Results.Ok(new
+                {
+                    message = "/hello endpoint worked!",
+                    connectedDatabase = connection.Database,
+                    state = connection.State.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Problem($"Database connection failed: {ex.Message}");
+            }
+        });
+
+        app.Run();
+    }
+}
