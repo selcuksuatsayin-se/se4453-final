@@ -16,14 +16,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app/out .
 
-# SSH ve Azure gereksinimleri [cite: 153, 154]
-RUN apt-get update && apt-get install -y --no-install-recommends openssh-server \
-    && echo "root:Docker!" | chpasswd
-COPY sshd_config /etc/ssh/
-
 # Başlatma betiği [cite: 156]
 COPY init.sh /app/init.sh
 RUN chmod +x /app/init.sh
 
-EXPOSE 80 2222
+EXPOSE 8080 2222
 ENTRYPOINT ["/app/init.sh"]
+
+ENV ASPNETCORE_URLS=http://+:80
